@@ -1,0 +1,29 @@
+services:
+  prometheus:
+    # เพิ่ม flags ตอน dev
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"          # ให้ reload config ได้ด้วย curl
+      - "--log.level=debug"
+
+  grafana:
+    # เปิด anonymous (ถ้าอยากใช้) + ปรับ setting เพิ่มเติม
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+
+  # alertmanager:
+  #   command:
+  #     - "--config.file=/etc/alertmanager/alertmanager.yml"
+  #     - "--log.level=debug"
+
+  node_exporter:
+    # ไม่จำเป็น แต่ถ้าอยากให้เห็นบน host ชัดๆ
+    ports:
+      - "9100:9100"
+
+  cadvisor:
+    ports:
+      - "8080:8080"

@@ -1,0 +1,52 @@
+networks:
+  monitor_net:
+    external: true
+    name: ${MONITOR_NET:-monitor_net}
+
+volumes:
+  promtail_positions:
+
+services:
+  promtail:
+    image: monitoring/promtail:${ENV_NAME:-office}
+    build:
+      context: .
+      dockerfile: images/promtail/Dockerfile
+      args:
+        ENV_NAME: ${ENV_NAME:-office}
+    container_name: promtail
+    networks: [monitor_net]
+    ports:
+      - "${PROMTAIL_PORT:-9080}:9080"
+
+    # ใช้ sh -c (ง่าย/ชัวร์สุด)
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      envsubst < /etc/promtail/promtail.yml > /tmp/promtail.yml
+      && promtail -config.file=/tmp/promtail.yml
+
+    environment:
+      ENV_NAME: ${ENV_NAME:-office}
+      PROJECT_NAME: ${PROJECT_NAME:-monitoring}
+      NODE_NAME: ${NODE_NAME:-edi-192}
+      LOKI_URL: ${LOKI_URL:-http://172.17.56.221:3100/loki/api/v1/push}
+
+      # ช่วยเรื่องการฟอร์ม log/timezone ในบางเคส
+      TZ: Asia/Bangkok
+
+    volumes:
+      - promtail_positions:/positions
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+
+    # production: อย่าให้ตันง่าย
+    mem_limit: ${PROMTAIL_MEM_LIMIT:-1g}
+    cpus: "${PROMTAIL_CPUS:-1.0}"
+
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+    restart: unless-stopped

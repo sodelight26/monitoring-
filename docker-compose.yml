@@ -1,0 +1,124 @@
+networks:
+  monitor_net:
+    external: true
+    name: ${MONITOR_NET:-monitor_net}
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  promtail_positions:
+
+services:
+  prometheus:
+    image: monitoring/prometheus:1.0
+    build:
+      context: .
+      dockerfile: images/prometheus/Dockerfile
+    container_name: prometheus
+    networks: [monitor_net]
+    ports:
+      - "${PROM_PORT:-9090}:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    restart: unless-stopped
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    image: monitoring/alertmanager:1.0
+    build:
+      context: .
+      dockerfile: images/alertmanager/Dockerfile
+    container_name: alertmanager
+    networks: [monitor_net]
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    restart: unless-stopped
+
+  grafana:
+    image: monitoring/grafana:1.0
+    build:
+      context: .
+      dockerfile: images/grafana/Dockerfile
+    container_name: grafana
+    networks: [monitor_net]
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    networks: [monitor_net]
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    mem_limit: 1g
+    cpus: "1.0"
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node_exporter
+    networks: [monitor_net]
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+  loki:
+    image: monitoring/loki:${ENV_NAME:-office}
+    build:
+      context: .
+      dockerfile: images/loki/Dockerfile
+      args:
+        ENV_NAME: ${ENV_NAME:-office}
+    container_name: loki
+    networks: [monitor_net]
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - loki_data:/loki
+    mem_limit: 1g
+    cpus: "1.0"
+    restart: unless-stopped
+
+  promtail:
+    image: monitoring/promtail:${ENV_NAME:-office}
+    build:
+      context: .
+      dockerfile: images/promtail/Dockerfile
+      args:
+        ENV_NAME: ${ENV_NAME:-office}
+    container_name: promtail
+    networks: [monitor_net]
+    ports:
+      - "${PROMTAIL_PORT:-9080}:9080"
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - promtail_positions:/positions
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+    mem_limit: 512m
+    cpus: "0.5"
+    restart: unless-stopped
+    depends_on: [loki]

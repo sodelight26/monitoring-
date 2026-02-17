@@ -1,0 +1,68 @@
+global:
+  scrape_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: "node"
+    static_configs:
+      - targets: ["172.17.56.221:9100"]
+        labels:
+          project: "monitoring"
+          env: "office"
+          role: "linux"
+          service: "node_exporter"
+          host_alias: "office-monitor-221"
+          ssh_host: "takeitadmin@172.17.56.221"
+
+      - targets: ["172.17.56.151:9100"]
+        labels:
+          project: "office-db"
+          env: "office"
+          role: "linux"
+          service: "node_exporter"
+          host_alias: "office-db-151"
+          ssh_host: "user@172.17.56.151"
+
+      - targets: ["172.17.56.192:9100"]
+        labels:
+          project: "office-sum"
+          env: "office"
+          role: "linux"
+          service: "node_exporter"
+          host_alias: "office-sum-192"
+          ssh_host: "user@172.17.56.192"
+
+
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["172.17.56.221:8080"]
+        labels:
+          project: "monitoring"
+          env: "office"
+          role: "container"
+          service: "cadvisor"
+          host_alias: "office-monitor-221"
+
+      - targets: ["172.17.56.151:8080"]
+        labels:
+          project: "office-db"
+          env: "office"
+          role: "container"
+          service: "cadvisor"
+          host_alias: "office-db-151"
+
+      - targets: ["172.17.56.192:8080"]
+        labels:
+          project: "office-sum"
+          env: "office"
+          role: "container"
+          service: "cadvisor"
+          host_alias: "office-sum-192"
+
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]

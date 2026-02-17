@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="monitoring">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/prometheus.zip!/" />
+      <root url="jar://$PROJECT_DIR$/node.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
